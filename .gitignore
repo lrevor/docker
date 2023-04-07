@@ -1,2 +1,3 @@
 # ENV Files
 .env
+*.up
