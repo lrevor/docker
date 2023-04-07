@@ -1,0 +1,57 @@
+version: "3"
+services:
+  plex:
+    env_file: ${ENV_DIR}/plex.env
+    image: plexinc/pms-docker
+    container_name: plex
+    networks:
+      plexvlan:
+        ipv4_address: ${DOCKER_HOST_IP_PREFIX}.4
+    #environment:
+      #These are set in plex.env above
+      #- TZ=set time zone
+      #- PLEX_CLAIM=set pex claim code
+    volumes:
+      - plex:/plex
+      - plexcache:/plexcache
+      - plexconfig:/config
+      - plextemp:/transcode
+      - ${CERTS_DIR}/plex:/certs
+    restart: unless-stopped
+
+volumes:
+  plex:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_RO_OPTIONS}
+      device: :/volume1/Plex
+  plexcache:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :/volume1/Plexcache
+  plexconfig:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/plex/database
+  plextemp:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/plex/temp
+
+networks:
+  plexvlan:
+    name: plexvlan
+    driver: macvlan
+    driver_opts:
+      parent: vlan10
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET}
+          gateway: ${DOCKER_GATEWAY}

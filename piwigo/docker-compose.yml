@@ -1,0 +1,51 @@
+version: "2.1"
+services:
+  piwigo:
+    env_file: ${ENV_DIR}/piwigo.env
+    build: .
+    image: cbbpiwigo
+    container_name: piwigo
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    volumes:
+      - piwigoconfig:/config
+      - piwigogallery:/gallery
+    ports:
+      - 2080:80
+    links:
+      - mariadb
+    restart: unless-stopped
+  mariadb:
+    image: mariadb:latest
+    restart: unless-stopped
+    volumes: 
+      - mariadbdata:/var/lib/mysql
+      - ${ENV_DIR}/piwigo/mariadb/conf:/etc/mysql
+        #    Added in env file
+        #    environment:
+        #      MARIADB_ROOT_PASSWORD: root password
+        #      MARIADB_DATABASE: db name
+        #      MARIADB_USER: db user
+        #      MARIADB_PASSWORD: db password
+
+volumes:
+  piwigoconfig:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/piwigo/piwigo/config
+  piwigogallery:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/piwigo/piwigo/gallery
+  mariadbdata:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/piwigo/mariadb/data

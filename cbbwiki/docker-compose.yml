@@ -1,0 +1,45 @@
+version: "3"
+services:
+  cbbwiki:
+    env_file: ${ENV_DIR}/cbbwiki.env
+    build: .
+    image: cbbwiki
+    container_name: cbbwiki
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    volumes:
+      - cbbwikiimages:/var/www/html/images
+      - ${ENV_DIR}/cbbwiki/varwwwhtml/LocalSettings.php:/var/www/html/LocalSettings.php
+    ports:
+      - 2081:80
+    links:
+      - mariadb
+    restart: unless-stopped
+  mariadb:
+    image: mariadb:latest
+    restart: unless-stopped
+    volumes: 
+      - mariadbdata:/var/lib/mysql
+      - ${ENV_DIR}/cbbwiki/mariadb/conf:/etc/mysql
+    #set in env_file
+    #environment:
+      #MARIADB_ROOT_PASSWORD: root password
+      #MARIADB_DATABASE: database name
+      #MARIADB_USER: user name
+      #MARIADB_PASSWORD: user password
+
+volumes:
+  cbbwikiimages:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/cbbwiki/cbbwiki/images
+  mariadbdata:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/cbbwiki/mariadb/data
