@@ -1,0 +1,50 @@
+# docker-compose.yaml
+version: '3.8'
+services:
+  arm:
+    image: 1337server/automatic-ripping-machine:latest
+    container_name: arm
+    privileged: true
+    restart: unless-stopped
+    environment:
+     - ARM_UID=1001
+     - ARM_GID=1001
+    volumes:
+     - /home/arm:/home/arm
+     - armmusic:/home/arm/Music
+     - armlogs:/home/arm/logs
+     - armmedia:/home/arm/media
+     - armconfig:/home/arm/config
+    ports:
+     - 7080:8080
+    devices:
+     - /dev/sr0:/dev/sr0
+     - /dev/sr1:/dev/sr1
+     - /dev/sr2:/dev/sr2
+     - /dev/sr3:/dev/sr3
+
+volumes:
+  armmusic:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/arm/Music
+  armlogs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/arm/logs
+  armmedia:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/arm/media
+  armconfig:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: ${NFS_OPTIONS}
+      device: :${VOLUME_PREFIX}/arm/config

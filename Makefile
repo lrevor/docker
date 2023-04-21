@@ -2,9 +2,10 @@
 COMPOSE_FILES = $(wildcard */docker-compose.yml)
 COMPOSE_UP_FILES = $(COMPOSE_FILES:.yml=.up)
 COMPOSE_DOWN_FILES = $(COMPOSE_FILES:.yml=.down)
+COMPOSE_PULL_FILES = $(COMPOSE_FILES:.yml=.pull)
 COMPOSE_PS_FILES = $(COMPOSE_FILES:.yml=.ps)
-ENV_DIR = ../env
-CERTS_DIR = ../certs
+ENV_DIR = ../../env
+CERTS_DIR = ../../certs
 
 cbbwiki/docker-compose.up: cbbwiki/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/cbbwiki.env
 jellyfin/docker-compose.up: jellyfin/docker-compose.yml $(ENV_DIR)/local.env $(CERTS_DIR)/jellyfin/jellyfin.p12
@@ -43,6 +44,11 @@ $(CERTS_DIR)/portainer/portainer.key: $(CERTS_DIR)/Wildcard.key
 	@cd $(dir $<); docker compose down -v
 	@-cd $(dir $<); /bin/rm docker-compose.up
 
+%.pull: %.yml
+	@echo ""
+	@echo DIR $(dir $<)
+	@-cd $(dir $<); docker compose pull
+
 %.ps: %.yml
 	@echo ""
 	@echo DIR $(dir $<)
@@ -51,5 +57,7 @@ $(CERTS_DIR)/portainer/portainer.key: $(CERTS_DIR)/Wildcard.key
 up:	$(COMPOSE_UP_FILES)
 
 down:	$(COMPOSE_DOWN_FILES)
+
+pull:	$(COMPOSE_PULL_FILES)
 
 ps:	$(COMPOSE_PS_FILES)
