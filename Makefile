@@ -6,6 +6,7 @@ COMPOSE_PULL_FILES = $(COMPOSE_FILES:.yml=.pull)
 COMPOSE_PS_FILES = $(COMPOSE_FILES:.yml=.ps)
 ENV_DIR = ../../env
 CERTS_DIR = ../../certs
+CERT_FILES = $(CERTS_DIR)/Wildcard.crt $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/jellyfin/jellyfin.p12 $(CERTS_DIR)/plex/plex.p12 $(CERTS_DIR)/portainer/portainer.crt $(CERTS_DIR)/portainer/portainer.key
 
 cbbwiki/docker-compose.up: cbbwiki/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/cbbwiki.env
 jellyfin/docker-compose.up: jellyfin/docker-compose.yml $(ENV_DIR)/local.env $(CERTS_DIR)/jellyfin/jellyfin.p12
@@ -13,13 +14,25 @@ piwigo/docker-compose.up: piwigo/docker-compose.yml $(ENV_DIR)/local.env $(ENV_D
 plex/docker-compose.up: plex/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/plex.env $(CERTS_DIR)/plex/plex.p12
 portainer/docker-compose.up: portainer/docker-compose.yml $(ENV_DIR)/local.env $(CERTS_DIR)/portainer/portainer.crt $(CERTS_DIR)/portainer/portainer.key
 
-$(CERTS_DIR)/jellyfin/jellyfin.p12: $(CERTS_DIR)/Wildcard.p12
-	@echo Deploying $@ from $<
-	@cp $< $@
+$(CERTS_DIR)/Wildcard.crt: 
+	@echo Retriving $@ 
+	@scp admin@pfsense.irevor.org:/conf/acme/Wildcard.crt $@
+	@chmod 660 $@
 
-$(CERTS_DIR)/plex/plex.p12: $(CERTS_DIR)/Wildcard.p12
-	@echo Deploying $@ from $<
-	@cp $< $@
+$(CERTS_DIR)/Wildcard.key: 
+	@echo Retriving $@ 
+	@scp admin@pfsense.irevor.org:/conf/acme/Wildcard.key $@
+	@chmod 660 $@
+
+$(CERTS_DIR)/jellyfin/jellyfin.p12: $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/Wildcard.crt
+	@echo Creating $@
+	@openssl pkcs12 -export -in $(CERTS_DIR)/Wildcard.crt -inkey $(CERTS_DIR)/Wildcard.key -out $@ -passout pass:""
+	@chmod 660 $@
+
+$(CERTS_DIR)/plex/plex.p12: $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/Wildcard.crt
+	@echo Creating $@
+	@openssl pkcs12 -export -in $(CERTS_DIR)/Wildcard.crt -inkey $(CERTS_DIR)/Wildcard.key -out $@ -passout pass:plex
+	@chmod 660 $@
 
 $(CERTS_DIR)/portainer/portainer.crt: $(CERTS_DIR)/Wildcard.crt
 	@echo Deploying $@ from $<
@@ -54,7 +67,7 @@ $(CERTS_DIR)/portainer/portainer.key: $(CERTS_DIR)/Wildcard.key
 	@echo DIR $(dir $<)
 	@cd $(dir $<); docker compose ps
 
-up:	$(COMPOSE_UP_FILES)
+up:	$(COMPOSE_UP_FILES) $(CERT_FILES)
 
 down:	$(COMPOSE_DOWN_FILES)
 
