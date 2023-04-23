@@ -1,3 +1,6 @@
 # ENV Files
 .env
 *.up
+*.down
+*.ps
+*.build

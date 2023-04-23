@@ -1,76 +1,92 @@
 #PROJECTS = cbbwiki jellyfin piwigo plex portainer
-COMPOSE_FILES = $(wildcard */docker-compose.yml)
-COMPOSE_UP_FILES = $(COMPOSE_FILES:.yml=.up)
-COMPOSE_DOWN_FILES = $(COMPOSE_FILES:.yml=.down)
-COMPOSE_PULL_FILES = $(COMPOSE_FILES:.yml=.pull)
-COMPOSE_PS_FILES = $(COMPOSE_FILES:.yml=.ps)
+COMPOSE_FILES = $(wildcard *-compose.yml)
+DOCKERFILE_FILES = $(wildcard *.Dockerfile)
+COMPOSE_UP_FILES = $(COMPOSE_FILES:-compose.yml=.up)
+COMPOSE_DOWN_FILES = $(COMPOSE_FILES:-compose.yml=.down)
+COMPOSE_PULL_FILES = $(COMPOSE_FILES:-compose.yml=.pull)
+COMPOSE_PS_FILES = $(COMPOSE_FILES:-compose.yml=.ps)
+COMPOSE_BUILD_FILES = $(DOCKERFILE_FILES:.Dockerfile=.build)
+
 ENV_DIR = ../../env
 CERTS_DIR = ../../certs
 CERT_FILES = $(CERTS_DIR)/Wildcard.crt $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/jellyfin/jellyfin.p12 $(CERTS_DIR)/plex/plex.p12 $(CERTS_DIR)/portainer/portainer.crt $(CERTS_DIR)/portainer/portainer.key
 
-cbbwiki/docker-compose.up: cbbwiki/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/cbbwiki.env
-jellyfin/docker-compose.up: jellyfin/docker-compose.yml $(ENV_DIR)/local.env $(CERTS_DIR)/jellyfin/jellyfin.p12
-piwigo/docker-compose.up: piwigo/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/piwigo.env
-plex/docker-compose.up: plex/docker-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/plex.env $(CERTS_DIR)/plex/plex.p12
-portainer/docker-compose.up: portainer/docker-compose.yml $(ENV_DIR)/local.env $(CERTS_DIR)/portainer/portainer.crt $(CERTS_DIR)/portainer/portainer.key
+cbbwiki.up: cbbwiki-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/cbbwiki.env
+piwigo.up: piwigo-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/piwigo.env
+plex.up: plex-compose.yml $(ENV_DIR)/local.env $(ENV_DIR)/plex.env $(CERTS_DIR)/plex/plex.p12
 
 $(CERTS_DIR)/Wildcard.crt: 
 	@echo Retriving $@ 
+	@mkdir -p $(CERTS_DIR)
 	@scp admin@pfsense.irevor.org:/conf/acme/Wildcard.crt $@
 	@chmod 660 $@
 
 $(CERTS_DIR)/Wildcard.key: 
 	@echo Retriving $@ 
+	@mkdir -p $(CERTS_DIR)
 	@scp admin@pfsense.irevor.org:/conf/acme/Wildcard.key $@
 	@chmod 660 $@
 
 $(CERTS_DIR)/jellyfin/jellyfin.p12: $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/Wildcard.crt
 	@echo Creating $@
+	@mkdir -p $(CERTS_DIR)/jellyfin
 	@openssl pkcs12 -export -in $(CERTS_DIR)/Wildcard.crt -inkey $(CERTS_DIR)/Wildcard.key -out $@ -passout pass:""
 	@chmod 660 $@
 
 $(CERTS_DIR)/plex/plex.p12: $(CERTS_DIR)/Wildcard.key $(CERTS_DIR)/Wildcard.crt
 	@echo Creating $@
+	@mkdir -p $(CERTS_DIR)/plex
 	@openssl pkcs12 -export -in $(CERTS_DIR)/Wildcard.crt -inkey $(CERTS_DIR)/Wildcard.key -out $@ -passout pass:plex
 	@chmod 660 $@
 
 $(CERTS_DIR)/portainer/portainer.crt: $(CERTS_DIR)/Wildcard.crt
 	@echo Deploying $@ from $<
+	@mkdir -p $(CERTS_DIR)/portainer
 	@cp $< $@
 
 $(CERTS_DIR)/portainer/portainer.key: $(CERTS_DIR)/Wildcard.key
 	@echo Deploying $@ from $<
+	@mkdir -p $(CERTS_DIR)/portainer
 	@cp $< $@
 
 #@echo target is $@, source is $<, dir is $(dir $<)
-%.up: %.yml
+%.up: %-compose.yml
 	@echo ""
-	@echo DIR $(dir $<)
-	@cd $(dir $<); docker compose down -v
-	@-cd $(dir $<); /bin/rm docker-compose.up
-	@cd $(dir $<); docker compose up -d
+	@echo $(@:.up=-compose.yml)
+	@docker compose -f $(@:.up=-compose.yml) -p $(@:.up=) down -v
+	@-/bin/rm $@
+	@docker compose -f $(@:.up=-compose.yml) -p $(@:.up=) up -d
 	@touch $@
 
-%.down: %.yml
+%.down: %-compose.yml
 	@echo ""
-	@echo DIR $(dir $<)
-	@cd $(dir $<); docker compose down -v
-	@-cd $(dir $<); /bin/rm docker-compose.up
+	@echo $(@:.down=-compose.yml)
+	@docker compose -f $(@:.down=-compose.yml) -p $(@:.down=) down -v
+	@-/bin/rm $(@:.down=.up)
 
-%.pull: %.yml
+%.pull: %-compose.yml
 	@echo ""
-	@echo DIR $(dir $<)
-	@-cd $(dir $<); docker compose pull
+	@echo $(@:.pull=-compose.yml)
+	@-docker compose -f $(@:.pull=-compose.yml) -p $(@:.pull=) pull
 
-%.ps: %.yml
+%.ps: %-compose.yml
 	@echo ""
-	@echo DIR $(dir $<)
-	@cd $(dir $<); docker compose ps
+	@echo $(@:.ps=-compose.yml)
+	@docker compose -f $(@:.ps=-compose.yml) -p $(@:.ps=) ps
 
-up:	$(COMPOSE_UP_FILES) $(CERT_FILES)
+%.build: %-compose.yml %.Dockerfile
+	@echo ""
+	@echo $(@:.build=-compose.yml)
+	@docker compose -f $(@:.build=-compose.yml) -p $(@:.build=) build
+	@touch $@
+
+up:	$(COMPOSE_BUILD_FIILES) $(CERT_FILES) $(COMPOSE_UP_FILES)
 
 down:	$(COMPOSE_DOWN_FILES)
 
 pull:	$(COMPOSE_PULL_FILES)
 
 ps:	$(COMPOSE_PS_FILES)
+
+build:	$(COMPOSE_BUILD_FILES)
+

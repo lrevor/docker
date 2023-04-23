@@ -2,7 +2,9 @@ version: "2.1"
 services:
   piwigo:
     env_file: ${ENV_DIR}/piwigo.env
-    build: .
+    build:
+      context: .
+      dockerfile: piwigo.Dockerfile
     image: cbbpiwigo
     container_name: piwigo
     environment:
